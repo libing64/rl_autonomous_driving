@@ -1,0 +1,9 @@
+gymnasium>=1.0
+highway-env>=1.8
+stable-baselines3>=2.3
+torch
+numpy
+imageio
+imageio-ffmpeg
+tensorboard
+tqdm
