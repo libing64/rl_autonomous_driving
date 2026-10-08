@@ -78,6 +78,7 @@ class ParkEnv(gym.Env):
         self.pivots = 0
         self.path_xy = [(self.x, self.y)]
         self._stage_limit = STAGES[stage]["max_steps"]
+        self._phi_prev = self._phi()
         return self._observe(), self._info(False)
 
     def step(self, action: int):
@@ -98,6 +99,10 @@ class ParkEnv(gym.Env):
             self.pivots += 1
         if sign != 0:
             self.last_sign = sign
+        # γ=1 下的势函数差分：靠近目标、摆正航向有中间奖励，最优策略不变。
+        phi = self._phi()
+        reward += phi - self._phi_prev
+        self._phi_prev = phi
 
         terminated = False
         success = False
@@ -120,6 +125,17 @@ class ParkEnv(gym.Env):
 
         truncated = (not terminated) and self.steps >= self._stage_limit
         return self._observe(), float(reward), terminated, truncated, self._info(success)
+
+    def _phi(self) -> float:
+        """先减小横向偏差和航向差，再沿车位中线靠近目标。"""
+        target = self.scene.target
+        dx = self.x - target[0]
+        dy = self.y - target[1]
+        c, s = np.cos(target[2]), np.sin(target[2])
+        fwd = c * dx + s * dy
+        lat = -s * dx + c * dy
+        yaw = float(abs(normalize_angle(self.theta - target[2])))
+        return -0.7 * abs(float(lat)) - 2.0 * yaw - 0.2 * abs(float(fwd))
 
     def _observe(self):
         target = self.scene.target
